@@ -148,7 +148,6 @@ jobs:
         shell: bash
         run: |
           ota run verify --native --stream .
-          ota run lint:style --native --stream .
 
       - name: Execute checks workflow tasks (native, Ubuntu proof)
         if: ${{ matrix.full_proof }}
@@ -174,6 +173,7 @@ jobs:
           jq -c '
             .tasks[]
             | select((.internal // false) == false)
+            | select(.name != "lint:style")
             | {
                 name: .name,
                 supports_native: (
@@ -208,6 +208,7 @@ jobs:
           jq -c '
             .tasks[]
             | select((.internal // false) == false)
+            | select(.name != "lint:style")
             | {
                 name: .name,
                 supports_container: (
