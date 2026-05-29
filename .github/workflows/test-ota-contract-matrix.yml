@@ -171,13 +171,7 @@ jobs:
                     ((.default_mode // "native") == "native")
                   end
                 ),
-                runtime_native: (
-                  if (.modes | type) == "array" then
-                    any(.modes[]?; .mode == "native" and ((.has_runtime // false) == true))
-                  else
-                    false
-                  end
-                )
+                runtime_native: (.has_runtime // false)
               }
             | select(.supports_native)
           ' .ota/ci/tasks-all.json > .ota/ci/tasks-native.jsonl
@@ -211,13 +205,7 @@ jobs:
                     ((.default_mode // "native") == "container")
                   end
                 ),
-                runtime_container: (
-                  if (.modes | type) == "array" then
-                    any(.modes[]?; .mode == "container" and ((.has_runtime // false) == true))
-                  else
-                    false
-                  end
-                )
+                runtime_container: (.has_runtime // false)
               }
             | select(.supports_container)
           ' .ota/ci/tasks-all.json > .ota/ci/tasks-container.jsonl

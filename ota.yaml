@@ -216,7 +216,8 @@ tasks:
     requirements:
       toolchains:
         - node
-    safe_for_agent: true
+    safe_for_agent: false
+    internal: true
     notes: Useful when API-only changes do not need the whole recursive test surface.
   test:blackbox:
     context: host
@@ -252,7 +253,6 @@ tasks:
       - lint
       - lint:style
       - app:typecheck
-      - api:test
     safe_for_agent: true
     notes: Use this before proposing normal contributor changes; run `format:check` explicitly when formatting drift checks are required.
 workflows:
@@ -298,7 +298,6 @@ agent:
     - lint:style
     - test
     - app:typecheck
-    - api:test
     - verify
   verify_after_changes:
     - verify
