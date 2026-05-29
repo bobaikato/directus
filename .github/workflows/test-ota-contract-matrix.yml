@@ -32,7 +32,7 @@ env:
 
 jobs:
   contract:
-    name: Ota Contract Matrix (${{ matrix.name }})
+    name: Ota Contract Matrix (${{ matrix.name }} | native+container)
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -85,15 +85,27 @@ jobs:
           ota tasks --workflow blackbox .
           ota execution topology --json . > .ota/ci/execution-topology.json
 
-      - name: Dry-run workflows
+      - name: Dry-run checks workflow (native)
         shell: bash
         run: |
           ota up --workflow checks --dry-run --json . > .ota/ci/up-checks-dry-run.json
+
+      - name: Dry-run checks workflow (container)
+        shell: bash
+        run: |
           ota up --workflow checks --container --dry-run --json . > .ota/ci/up-checks-container-dry-run.json
+
+      - name: Dry-run unit workflow (native)
+        shell: bash
+        run: |
           ota up --workflow unit --dry-run --json . > .ota/ci/up-unit-dry-run.json
+
+      - name: Dry-run build workflow (native)
+        shell: bash
+        run: |
           ota up --workflow build --dry-run --json . > .ota/ci/up-build-dry-run.json
 
-      - name: Dry-run Docker-backed blackbox workflow
+      - name: Dry-run blackbox workflow (repo Docker path)
         if: ${{ matrix.docker_ready }}
         shell: bash
         run: |
