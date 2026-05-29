@@ -137,7 +137,7 @@ tasks:
     effects:
       writes:
         - node_modules/.cache
-    safe_for_agent: true
+    internal: true
     notes: The root `format` script is already a check command, not a writer.
   test:
     context: host

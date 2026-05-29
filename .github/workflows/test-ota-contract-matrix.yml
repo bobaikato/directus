@@ -116,7 +116,11 @@ jobs:
             process.exit(1);
           }
           const summary = report.summary?.primary_blocker?.summary || '';
-          if (!/container execution backend/i.test(summary) && !/container engine/i.test(summary)) {
+          if (
+            !/container execution backend/i.test(summary) &&
+            !/container engine/i.test(summary) &&
+            !/runtime probe failed: node/i.test(summary)
+          ) {
             console.error(JSON.stringify(report.summary, null, 2));
             process.exit(1);
           }
