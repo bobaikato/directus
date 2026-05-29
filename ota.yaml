@@ -249,13 +249,12 @@ tasks:
           context: app
           run: "true"
     depends_on:
-      - format:check
       - lint
       - lint:style
       - app:typecheck
       - api:test
     safe_for_agent: true
-    notes: Use this before proposing normal contributor changes.
+    notes: Use this before proposing normal contributor changes; run `format:check` explicitly when formatting drift checks are required.
 workflows:
   default: checks
   checks:
