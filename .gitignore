@@ -59,3 +59,8 @@ TODO
 !.claude/hooks/
 !.claude/skills/
 .devtools/
+
+# Ota local runtime artifacts
+.ota/state/*
+.ota/receipts/*
+.ota/proof/*

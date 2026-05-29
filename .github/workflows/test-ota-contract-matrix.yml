@@ -1,0 +1,109 @@
+name: 'Test: Ota contract matrix'
+
+on:
+  workflow_dispatch:
+    inputs:
+      ota_repository:
+        description: Ota source repository to build for this matrix run
+        required: false
+        default: ota-run/ota
+      ota_ref:
+        description: Ota branch, tag, or commit to build for this matrix run
+        required: false
+        default: 1.6.18-implementation
+  pull_request:
+    paths:
+      - 'ota.yaml'
+      - '.github/workflows/test-ota-contract-matrix.yml'
+  push:
+    paths:
+      - 'ota.yaml'
+      - '.github/workflows/test-ota-contract-matrix.yml'
+
+concurrency:
+  group: ota-contract-matrix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  OTA_NO_UPDATE_CHECK: '1'
+
+jobs:
+  contract:
+    name: Ota Contract Matrix (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-node22
+            os: ubuntu-latest
+            docker_ready: true
+          - name: macos-node22
+            os: macos-latest
+            docker_ready: false
+          - name: windows-node22
+            os: windows-latest
+            docker_ready: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        shell: bash
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Install ota from source
+        uses: ota-run/ota/.github/actions/install-ota-from-source@v1.6.16
+        with:
+          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
+          ref: ${{ github.event.inputs.ota_ref || '1.6.18-implementation' }}
+
+      - name: Contract gates
+        shell: bash
+        run: |
+          mkdir -p .ota/ci
+          ota validate --json . > .ota/ci/validate.json
+          ota validate .
+          ota tasks --safe --use .
+          ota tasks --workflow checks .
+          ota tasks --workflow unit .
+          ota tasks --workflow build .
+          ota tasks --workflow blackbox .
+          ota execution topology --json . > .ota/ci/execution-topology.json
+
+      - name: Dry-run workflows
+        shell: bash
+        run: |
+          ota up --workflow checks --dry-run --json . > .ota/ci/up-checks-dry-run.json
+          ota up --workflow checks --container --dry-run --json . > .ota/ci/up-checks-container-dry-run.json
+          ota up --workflow unit --dry-run --json . > .ota/ci/up-unit-dry-run.json
+          ota up --workflow build --dry-run --json . > .ota/ci/up-build-dry-run.json
+
+      - name: Dry-run Docker-backed blackbox workflow
+        if: ${{ matrix.docker_ready }}
+        shell: bash
+        run: |
+          ota up --workflow blackbox --dry-run --json . > .ota/ci/up-blackbox-dry-run.json
+
+      - name: Upload failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-contract-matrix-${{ matrix.name }}
+          include-hidden-files: true
+          path: .ota/ci/
+          retention-days: 7

@@ -1,0 +1,316 @@
+version: 1
+project:
+  name: directus
+  description: Directus monorepo contributor readiness slice
+metadata:
+  ota:
+    minimum_version: "1.6.17"
+execution:
+  default_context: host
+  contexts:
+    host:
+      backend: native
+    app:
+      backend: container
+      lifecycle: ephemeral
+      container:
+        image: node:22-bookworm
+        engines:
+          - docker
+          - podman
+      attachments:
+        isolated_paths:
+          - node_modules
+          - .pnpm-store
+toolchains:
+  node:
+    provider: corepack
+    version: "22"
+    package_managers:
+      pnpm: "10.27.0"
+tasks:
+  setup:
+    context: host
+    description: Install pnpm workspace dependencies
+    run: pnpm install
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm install
+        container:
+          context: app
+          run: pnpm install
+    effects:
+      writes:
+        - node_modules
+      network: true
+      network_kind: dependency_hydration
+    requirements:
+      toolchains:
+        - node
+    notes: Mirrors the repository prepare action's dependency hydration step.
+  build:
+    context: host
+    description: Build the Directus workspace packages
+    run: pnpm build
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm build
+        container:
+          context: app
+          run: pnpm build
+    requirements:
+      toolchains:
+        - node
+    notes: This is heavier than the default agent path because it recursively builds the monorepo.
+  lint:
+    context: host
+    description: Run the root ESLint surface
+    run: pnpm lint
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm lint
+        container:
+          context: app
+          run: pnpm lint
+    requirements:
+      toolchains:
+        - node
+    safe_for_agent: true
+    notes: CI narrows this to changed files; this contract keeps the repo-level lint command as the portable default.
+  lint:style:
+    context: host
+    description: Run the root Stylelint surface
+    run: pnpm lint:style
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm lint:style
+        container:
+          context: app
+          run: pnpm lint:style
+    requirements:
+      toolchains:
+        - node
+    safe_for_agent: true
+    notes: CI narrows this to changed files; this task runs the declared repo script.
+  format:check:
+    context: host
+    description: Check Prettier formatting without modifying files
+    run: pnpm format
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm format
+        container:
+          context: app
+          run: pnpm format
+    requirements:
+      toolchains:
+        - node
+    safe_for_agent: true
+    notes: The root `format` script is already a check command, not a writer.
+  test:
+    context: host
+    description: Run the root recursive unit test surface
+    run: pnpm test
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm test
+        container:
+          context: app
+          run: pnpm test
+    requirements:
+      toolchains:
+        - node
+    safe_for_agent: true
+    notes: Excludes the blackbox workspace the same way the root script does.
+  test:coverage:
+    context: host
+    description: Run recursive unit tests with coverage
+    run: pnpm test:coverage
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm test:coverage
+        container:
+          context: app
+          run: pnpm test:coverage
+    requirements:
+      toolchains:
+        - node
+    notes: Heavier CI coverage path; not agent-safe by default because it writes coverage output.
+  app:typecheck:
+    context: host
+    description: Run Vue type checking for the app workspace
+    run: pnpm --filter @directus/app typecheck
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm --filter @directus/app typecheck
+        container:
+          context: app
+          run: pnpm --filter @directus/app typecheck
+    requirements:
+      toolchains:
+        - node
+    safe_for_agent: true
+    notes: Useful for app-facing changes that need a targeted typecheck.
+  api:test:
+    context: host
+    description: Run API package tests
+    run: pnpm --filter @directus/api test
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: pnpm --filter @directus/api test
+        container:
+          context: app
+          run: pnpm --filter @directus/api test
+    requirements:
+      toolchains:
+        - node
+    safe_for_agent: true
+    notes: Useful when API-only changes do not need the whole recursive test surface.
+  test:blackbox:
+    context: host
+    description: Run Directus blackbox tests through the repository script
+    run: pnpm test:blackbox
+    depends_on:
+      - setup
+    effects:
+      writes:
+        - dist
+      external_state:
+        - docker
+    requirements:
+      toolchains:
+        - node
+      tools:
+        docker: "*"
+    notes: Heavy service-backed path; run only when blackbox coverage is intentionally required.
+  verify:
+    context: host
+    description: Run the lean agent-safe verification path
+    run: "true"
+    execution:
+      default_mode: native
+      modes:
+        native:
+          context: host
+          run: "true"
+        container:
+          context: app
+          run: "true"
+    depends_on:
+      - format:check
+      - lint
+      - lint:style
+      - app:typecheck
+      - api:test
+    safe_for_agent: true
+    notes: Use this before proposing normal contributor changes.
+workflows:
+  default: checks
+  checks:
+    intent: ci_validation
+    description: Lean PR validation path for normal contributor changes
+    setup:
+      task: setup
+    run:
+      task: verify
+    notes: Uses check-style tasks and targeted tests instead of the full blackbox matrix.
+  unit:
+    intent: ci_validation
+    description: Full recursive unit test path
+    setup:
+      task: setup
+    run:
+      task: test
+    notes: Mirrors the root `pnpm test` script.
+  build:
+    intent: ci_validation
+    description: Full workspace build path
+    setup:
+      task: setup
+    run:
+      task: build
+    notes: Use this when workspace package boundaries or build outputs may be affected.
+  blackbox:
+    intent: packaged_runtime
+    description: Heavy Docker-backed blackbox test path
+    setup:
+      task: setup
+    run:
+      task: test:blackbox
+    notes: This is intentionally outside the agent-safe default because it mutates Docker state.
+agent:
+  posture: readiness_strict
+  default_task: verify
+  safe_tasks:
+    - format:check
+    - lint
+    - lint:style
+    - test
+    - app:typecheck
+    - api:test
+    - verify
+  verify_after_changes:
+    - verify
+  writable_paths:
+    - api
+    - app
+    - directus
+    - node_modules
+    - packages
+    - sdk
+    - tests
+  protected_paths:
+    - .env
+    - .github/workflows
+    - .npmrc
+    - docker-compose.yml
+    - Dockerfile
+    - ota.yaml
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+  bootstrap:
+    ota:
+      note: Install ota only when missing so contributors and agents can use the readiness workflows declared here.
+      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION=v1.6.17 sh
+      powershell: $env:OTA_VERSION='v1.6.17'; irm https://dist.ota.run/install.ps1 | iex
+  notes: |
+    This contract intentionally scopes Directus to monorepo contributor readiness:
+    dependency install, lint/style/format checks, targeted app/API tests, full unit tests,
+    build, and the heavy blackbox entrypoint.
+    Use `ota tasks --safe --use` to see the commands agents are allowed to run.
+    Use `ota up --workflow checks` on a fresh checkout so Ota runs setup before verification.
+    Use `ota up --workflow checks --container` to run the same check path through the declared
+    Node container context; native remains the default.
+    Use `ota run verify` after dependencies are already installed.
+    Use `ota up --workflow unit` or `ota up --workflow build` when broader repo proof is needed.
+    Use `ota up --workflow blackbox` only when Docker-backed blackbox testing is intentional.
+    Do not edit env files, lockfiles, workspace topology, Docker files, CI workflows, or this
+    contract unless the maintainer explicitly asks for contract or infrastructure authoring.
