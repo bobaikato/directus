@@ -32,16 +32,16 @@ tasks:
   setup:
     context: host
     description: Install pnpm workspace dependencies
-    run: pnpm install
+    run: corepack pnpm install
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm install
+          run: corepack pnpm install
         container:
           context: app
-          run: pnpm install
+          run: corepack pnpm install
     effects:
       writes:
         - node_modules
@@ -54,16 +54,18 @@ tasks:
   build:
     context: host
     description: Build the Directus workspace packages
-    run: pnpm build
+    run: corepack pnpm build
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm build
+          run: corepack pnpm build
         container:
           context: app
-          run: pnpm build
+          run: corepack pnpm build
     requirements:
       toolchains:
         - node
@@ -71,70 +73,87 @@ tasks:
   lint:
     context: host
     description: Run the root ESLint surface
-    run: pnpm lint
+    run: corepack pnpm lint
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm lint
+          run: corepack pnpm lint
         container:
           context: app
-          run: pnpm lint
+          run: corepack pnpm lint
     requirements:
       toolchains:
         - node
+    effects:
+      writes:
+        - .eslintcache
     safe_for_agent: true
     notes: CI narrows this to changed files; this contract keeps the repo-level lint command as the portable default.
   lint:style:
     context: host
     description: Run the root Stylelint surface
-    run: pnpm lint:style
+    run: corepack pnpm lint:style
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm lint:style
+          run: corepack pnpm lint:style
         container:
           context: app
-          run: pnpm lint:style
+          run: corepack pnpm lint:style
     requirements:
       toolchains:
         - node
+    effects:
+      writes:
+        - .stylelintcache
     safe_for_agent: true
     notes: CI narrows this to changed files; this task runs the declared repo script.
   format:check:
     context: host
     description: Check Prettier formatting without modifying files
-    run: pnpm format
+    run: corepack pnpm format
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm format
+          run: corepack pnpm format
         container:
           context: app
-          run: pnpm format
+          run: corepack pnpm format
     requirements:
       toolchains:
         - node
+    effects:
+      writes:
+        - node_modules/.cache
     safe_for_agent: true
     notes: The root `format` script is already a check command, not a writer.
   test:
     context: host
     description: Run the root recursive unit test surface
-    run: pnpm test
+    run: corepack pnpm test
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm test
+          run: corepack pnpm test
         container:
           context: app
-          run: pnpm test
+          run: corepack pnpm test
     requirements:
       toolchains:
         - node
@@ -143,16 +162,18 @@ tasks:
   test:coverage:
     context: host
     description: Run recursive unit tests with coverage
-    run: pnpm test:coverage
+    run: corepack pnpm test:coverage
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm test:coverage
+          run: corepack pnpm test:coverage
         container:
           context: app
-          run: pnpm test:coverage
+          run: corepack pnpm test:coverage
     requirements:
       toolchains:
         - node
@@ -160,16 +181,18 @@ tasks:
   app:typecheck:
     context: host
     description: Run Vue type checking for the app workspace
-    run: pnpm --filter @directus/app typecheck
+    run: corepack pnpm --filter @directus/app typecheck
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm --filter @directus/app typecheck
+          run: corepack pnpm --filter @directus/app typecheck
         container:
           context: app
-          run: pnpm --filter @directus/app typecheck
+          run: corepack pnpm --filter @directus/app typecheck
     requirements:
       toolchains:
         - node
@@ -178,16 +201,18 @@ tasks:
   api:test:
     context: host
     description: Run API package tests
-    run: pnpm --filter @directus/api test
+    run: corepack pnpm --filter @directus/api test
+    depends_on:
+      - setup
     execution:
       default_mode: native
       modes:
         native:
           context: host
-          run: pnpm --filter @directus/api test
+          run: corepack pnpm --filter @directus/api test
         container:
           context: app
-          run: pnpm --filter @directus/api test
+          run: corepack pnpm --filter @directus/api test
     requirements:
       toolchains:
         - node
@@ -196,7 +221,7 @@ tasks:
   test:blackbox:
     context: host
     description: Run Directus blackbox tests through the repository script
-    run: pnpm test:blackbox
+    run: corepack pnpm test:blackbox
     depends_on:
       - setup
     effects:
@@ -286,6 +311,8 @@ agent:
     - packages
     - sdk
     - tests
+    - .eslintcache
+    - .stylelintcache
   protected_paths:
     - .env
     - .github/workflows
