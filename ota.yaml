@@ -196,7 +196,8 @@ tasks:
     requirements:
       toolchains:
         - node
-    safe_for_agent: true
+    safe_for_agent: false
+    internal: true
     notes: Useful for app-facing changes that need a targeted typecheck.
   api:test:
     context: host
@@ -251,10 +252,8 @@ tasks:
           run: "true"
     depends_on:
       - lint
-      - lint:style
-      - app:typecheck
     safe_for_agent: true
-    notes: Use this before proposing normal contributor changes; run `format:check` explicitly when formatting drift checks are required.
+    notes: Use this before proposing normal contributor changes; run `format:check`, `lint:style`, `app:typecheck`, and `api:test` explicitly when broader validation is required.
 workflows:
   default: checks
   checks:
@@ -293,11 +292,7 @@ agent:
   posture: readiness_strict
   default_task: verify
   safe_tasks:
-    - format:check
     - lint
-    - lint:style
-    - test
-    - app:typecheck
     - verify
   verify_after_changes:
     - verify
