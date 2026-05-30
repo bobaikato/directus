@@ -70,7 +70,7 @@ jobs:
           pnpm --version
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@v1.6.16
+        uses: ota-run/ota/.github/actions/install-ota-from-source@v1.6.18
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
           ref: ${{ github.event.inputs.ota_ref || '1.6.18-implementation' }}
