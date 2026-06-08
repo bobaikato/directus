@@ -4,7 +4,7 @@ project:
   description: Directus monorepo contributor readiness slice
 metadata:
   ota:
-    minimum_version: "1.6.18"
+    minimum_version: "1.6.20"
 execution:
   default_context: host
   contexts:
@@ -32,25 +32,31 @@ tasks:
   setup:
     context: host
     description: Install pnpm workspace dependencies
-    run: corepack pnpm install
+    prepare:
+      kind: dependency_hydration
+      medium: package_dependencies
+      source:
+        kind: node_package_manager
+        cwd: .
+        manager: pnpm
+        mode: install
+        frozen_lockfile: true
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm install
         container:
           context: app
-          run: corepack pnpm install
     effects:
       writes:
         - node_modules
+        - .pnpm-store
       network: true
       network_kind: dependency_hydration
     requirements:
       toolchains:
         - node
-    notes: Mirrors the repository prepare action's dependency hydration step.
+    notes: Uses the lockfile-strict pnpm hydration lane so agent and CI verification do not rely on
+      a mutable install path.
   build:
     context: host
     description: Build the Directus workspace packages
@@ -60,12 +66,8 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm build
         container:
           context: app
-          run: corepack pnpm build
     requirements:
       toolchains:
         - node
@@ -79,12 +81,8 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm lint
         container:
           context: app
-          run: corepack pnpm lint
     requirements:
       toolchains:
         - node
@@ -102,20 +100,17 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm lint:style
         container:
           context: app
-          run: corepack pnpm lint:style
     requirements:
       toolchains:
         - node
     effects:
       writes:
         - .stylelintcache
-    safe_for_agent: true
-    notes: CI narrows this to changed files; this task runs the declared repo script.
+    notes: CI narrows this to changed files; this task runs the declared repo script. The current
+      upstream baseline can fail here, so treat it as a truthful repo surface rather than an assumed
+      green smoke lane.
   format:check:
     context: host
     description: Check Prettier formatting without modifying files
@@ -125,12 +120,8 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm format
         container:
           context: app
-          run: corepack pnpm format
     requirements:
       toolchains:
         - node
@@ -148,17 +139,14 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm test
         container:
           context: app
-          run: corepack pnpm test
     requirements:
       toolchains:
         - node
-    safe_for_agent: true
-    notes: Excludes the blackbox workspace the same way the root script does.
+    notes: Excludes the blackbox workspace the same way the root script does. This is the truthful
+      recursive unit-test surface, but the current upstream baseline can fail here, so do not
+      present it as a guaranteed quick green check.
   test:coverage:
     context: host
     description: Run recursive unit tests with coverage
@@ -168,12 +156,8 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm test:coverage
         container:
           context: app
-          run: corepack pnpm test:coverage
     requirements:
       toolchains:
         - node
@@ -187,12 +171,8 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm --filter @directus/app typecheck
         container:
           context: app
-          run: corepack pnpm --filter @directus/app typecheck
     requirements:
       toolchains:
         - node
@@ -208,12 +188,8 @@ tasks:
     execution:
       default_mode: native
       modes:
-        native:
-          context: host
-          run: corepack pnpm --filter @directus/api test
         container:
           context: app
-          run: corepack pnpm --filter @directus/api test
     requirements:
       toolchains:
         - node
@@ -238,22 +214,15 @@ tasks:
         docker: "*"
     notes: Heavy service-backed path; run only when blackbox coverage is intentionally required.
   verify:
-    context: host
     description: Run the lean agent-safe verification path
-    run: "true"
-    execution:
-      default_mode: native
-      modes:
-        native:
-          context: host
-          run: "true"
-        container:
-          context: app
-          run: "true"
-    depends_on:
-      - lint
+    aggregate:
+      tasks:
+        - lint
     safe_for_agent: true
-    notes: Use this before proposing normal contributor changes; run `format:check`, `lint:style`, `app:typecheck`, and `api:test` explicitly when broader validation is required.
+    notes: Use this before proposing normal contributor changes; it stays lean on purpose because
+      the broader root `lint:style` and `test` surfaces are real but not currently reliable as fast
+      green smoke checks. Run `format:check`, `lint:style`, `app:typecheck`, and `api:test`
+      explicitly when broader validation is required.
 workflows:
   default: checks
   checks:
@@ -299,6 +268,7 @@ agent:
   writable_paths:
     - api
     - app
+    - .pnpm-store
     - directus
     - node_modules
     - packages
@@ -318,9 +288,9 @@ agent:
     - pnpm-workspace.yaml
   bootstrap:
     ota:
-      note: Install ota only when missing so contributors and agents can use the readiness workflows declared here.
-      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION=v1.6.18 sh
-      powershell: $env:OTA_VERSION='v1.6.18'; irm https://dist.ota.run/install.ps1 | iex
+      note: Install ota only when missing so contributors and agents can use the readiness workflows declared here. This contract currently depends on first-class aggregate and dependency-hydration surfaces that are tracked on the pinned implementation branch until the matching public release is cut.
+      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_BRANCH=1.6.20-implementation sh -s -- --from-git
+      powershell: $env:OTA_GIT_BRANCH='1.6.20-implementation'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
   notes: |
     This contract intentionally scopes Directus to monorepo contributor readiness:
     dependency install, lint/style/format checks, targeted app/API tests, full unit tests,
