@@ -107,7 +107,7 @@ jobs:
         run: |
           ota up --workflow checks --container --dry-run --json . > .ota/ci/up-checks-container-dry-run.json
 
-      - name: Assert checks workflow container dry-run blocks without container engine
+      - name: Assert checks workflow container dry-run blocks on non-runnable host
         if: ${{ !matrix.docker_ready }}
         shell: bash
         run: |
@@ -124,10 +124,14 @@ jobs:
             process.exit(1);
           }
           const summary = report.summary?.primary_blocker?.summary || '';
+          const why = report.summary?.primary_blocker?.why || '';
+          const rendered = `${summary}\n${why}`;
           if (
-            !/container execution backend/i.test(summary) &&
-            !/container engine/i.test(summary) &&
-            !/runtime probe failed: node/i.test(summary)
+            !/container execution backend/i.test(rendered) &&
+            !/container engine/i.test(rendered) &&
+            !/runtime probe failed: node/i.test(rendered) &&
+            !/container image unavailable/i.test(rendered) &&
+            !/no matching manifest/i.test(rendered)
           ) {
             console.error(JSON.stringify(report.summary, null, 2));
             process.exit(1);
