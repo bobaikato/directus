@@ -76,8 +76,6 @@ tasks:
     context: host
     description: Run the root ESLint surface
     run: corepack pnpm lint
-    depends_on:
-      - setup
     execution:
       default_mode: native
       modes:
@@ -86,6 +84,8 @@ tasks:
     requirements:
       toolchains:
         - node
+      checks:
+        - workspace-dependencies-installed
     effects:
       writes:
         - .eslintcache
@@ -214,7 +214,7 @@ tasks:
         docker: "*"
     notes: Heavy service-backed path; run only when blackbox coverage is intentionally required.
   verify:
-    description: Run the lean agent-safe verification path
+    description: Run the lean contributor verification path
     aggregate:
       tasks:
         - lint
@@ -223,6 +223,13 @@ tasks:
       the broader root `lint:style` and `test` surfaces are real but not currently reliable as fast
       green smoke checks. Run `format:check`, `lint:style`, `app:typecheck`, and `api:test`
       explicitly when broader validation is required.
+checks:
+  - name: workspace-dependencies-installed
+    kind: file
+    severity: error
+    path: node_modules/.modules.yaml
+    expect: file
+    timeout: 10000
 workflows:
   default: checks
   checks:
@@ -289,8 +296,8 @@ agent:
   bootstrap:
     ota:
       note: Install ota only when missing so contributors and agents can use the readiness workflows declared here. This contract currently depends on first-class aggregate and dependency-hydration surfaces that are tracked on the pinned implementation branch until the matching public release is cut.
-      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_BRANCH=1.6.20-implementation sh -s -- --from-git
-      powershell: $env:OTA_GIT_BRANCH='1.6.20-implementation'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
+      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_REV=e71931d6a41cc52a15966e0125725b67a05cc073 sh -s -- --from-git
+      powershell: $env:OTA_GIT_REV='e71931d6a41cc52a15966e0125725b67a05cc073'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
   notes: |
     This contract intentionally scopes Directus to monorepo contributor readiness:
     dependency install, lint/style/format checks, targeted app/API tests, full unit tests,
