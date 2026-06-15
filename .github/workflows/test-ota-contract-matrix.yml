@@ -55,17 +55,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Enable Corepack
-        shell: bash
-        run: |
-          corepack enable
-          pnpm --version
-
       - name: Install ota (Unix)
         if: runner.os != 'Windows'
         shell: bash
