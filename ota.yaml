@@ -24,10 +24,12 @@ execution:
           - .pnpm-store
 toolchains:
   node:
-    provider: corepack
     version: "22"
     package_managers:
       pnpm: "10.27.0"
+    fulfillment:
+      source: corepack
+      mode: run
 tasks:
   setup:
     context: host
