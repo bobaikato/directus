@@ -62,7 +62,11 @@ tasks:
   build:
     context: host
     description: Build the Directus workspace packages
-    run: corepack pnpm build
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - build
     depends_on:
       - setup
     execution:
@@ -77,7 +81,11 @@ tasks:
   lint:
     context: host
     description: Run the root ESLint surface
-    run: corepack pnpm lint
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - lint
     execution:
       default_mode: native
       modes:
@@ -96,7 +104,11 @@ tasks:
   lint:style:
     context: host
     description: Run the root Stylelint surface
-    run: corepack pnpm lint:style
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - lint:style
     depends_on:
       - setup
     execution:
@@ -116,7 +128,11 @@ tasks:
   format:check:
     context: host
     description: Check Prettier formatting without modifying files
-    run: corepack pnpm format
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - format
     depends_on:
       - setup
     execution:
@@ -135,7 +151,11 @@ tasks:
   test:
     context: host
     description: Run the root recursive unit test surface
-    run: corepack pnpm test
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - test
     depends_on:
       - setup
     execution:
@@ -152,7 +172,11 @@ tasks:
   test:coverage:
     context: host
     description: Run recursive unit tests with coverage
-    run: corepack pnpm test:coverage
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - test:coverage
     depends_on:
       - setup
     execution:
@@ -167,7 +191,13 @@ tasks:
   app:typecheck:
     context: host
     description: Run Vue type checking for the app workspace
-    run: corepack pnpm --filter @directus/app typecheck
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - --filter
+        - "@directus/app"
+        - typecheck
     depends_on:
       - setup
     execution:
@@ -184,7 +214,13 @@ tasks:
   api:test:
     context: host
     description: Run API package tests
-    run: corepack pnpm --filter @directus/api test
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - --filter
+        - "@directus/api"
+        - test
     depends_on:
       - setup
     execution:
@@ -201,7 +237,11 @@ tasks:
   test:blackbox:
     context: host
     description: Run Directus blackbox tests through the repository script
-    run: corepack pnpm test:blackbox
+    command:
+      exe: corepack
+      args:
+        - pnpm
+        - test:blackbox
     depends_on:
       - setup
     effects:
